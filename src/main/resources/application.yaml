@@ -1,3 +1,16 @@
 spring:
   application:
     name: integration-reliability-platform
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/irp
+    username: irp
+    password: irp
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
