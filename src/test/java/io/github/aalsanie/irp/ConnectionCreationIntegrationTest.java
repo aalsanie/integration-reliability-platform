@@ -88,21 +88,27 @@ public class ConnectionCreationIntegrationTest {
 
     @Test
     void rejectsDuplicateConnectionWithConflict() throws Exception {
-        String content = """
+        String contentLowercase = """
                 {
                   "name": "Stripe Production",
                   "providerType": "stripe"
                 }
                 """;
+        String contentUppercase = """
+                {
+                  "name": "Stripe Production",
+                  "providerType": "STRIPE"
+                }
+                """;
         String uri = "/api/v1/connections";
         mockMvc.perform(post(uri)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(content))
+                        .content(contentLowercase))
                 .andExpect(status().isCreated());
 
         MvcResult result = mockMvc.perform(post(uri)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(content))
+                        .content(contentUppercase))
                 .andExpect(status().isConflict())
                 .andReturn();
 
@@ -110,8 +116,22 @@ public class ConnectionCreationIntegrationTest {
                 ApiErrorResponse.class);
 
         Assertions.assertNotNull(response);
-        Assertions.assertEquals(response.status(), HttpStatus.CONFLICT.value());
-        Assertions.assertEquals(response.message(), HttpStatus.CONFLICT.getReasonPhrase());
+
+        Assertions.assertEquals(
+                HttpStatus.CONFLICT.value(),
+                response.status()
+        );
+
+        Assertions.assertEquals(
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                response.error()
+        );
+
+        Assertions.assertEquals(
+                "Connection already exists for provider type STRIPE",
+                response.message()
+        );
+
         Assertions.assertEquals(uri, response.path());
         List<IntegrationConnection> results = repository.findAll();
         Assertions.assertNotNull(results);

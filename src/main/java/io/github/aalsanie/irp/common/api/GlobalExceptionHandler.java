@@ -17,8 +17,8 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.CONFLICT;
         ApiErrorResponse response = new ApiErrorResponse(Instant.now(),
                 status.value(),
-                status.getReasonPhrase(),
                 exception.getMessage(),
+                status.getReasonPhrase(),
                 request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
