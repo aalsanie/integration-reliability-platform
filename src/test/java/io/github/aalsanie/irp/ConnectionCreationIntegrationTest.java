@@ -1,5 +1,6 @@
 package io.github.aalsanie.irp;
 
+import io.github.aalsanie.irp.common.api.ApiErrorResponse;
 import io.github.aalsanie.irp.connections.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -42,11 +44,11 @@ public class ConnectionCreationIntegrationTest {
         MvcResult result = mockMvc.perform(post("/api/v1/connections")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {
-                              "name": "Stripe Production",
-                              "providerType": "stripe"
-                            }
-                            """))
+                                {
+                                  "name": "Stripe Production",
+                                  "providerType": "stripe"
+                                }
+                                """))
                 .andExpect(status().isCreated())
                 .andReturn();
         ConnectionResponse response =
@@ -72,15 +74,75 @@ public class ConnectionCreationIntegrationTest {
     @Test
     void rejectsConnectionWhenRequiredFieldsAreBlank() throws Exception {
         mockMvc.perform(post("/api/v1/connections")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                        {
-                                          "name": "",
-                                          "providerType": ""
-                                        }
-                                        """))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "",
+                                  "providerType": ""
+                                }
+                                """))
                 .andExpect(status().isBadRequest());
         List<IntegrationConnection> results = repository.findAll();
         Assertions.assertEquals(0, results.size());
+    }
+
+    @Test
+    void rejectsDuplicateConnectionWithConflict() throws Exception {
+        String content = """
+                {
+                  "name": "Stripe Production",
+                  "providerType": "stripe"
+                }
+                """;
+        String uri = "/api/v1/connections";
+        mockMvc.perform(post(uri)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(content))
+                .andExpect(status().isCreated());
+
+        MvcResult result = mockMvc.perform(post(uri)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(content))
+                .andExpect(status().isConflict())
+                .andReturn();
+
+        ApiErrorResponse response = objectMapper.readValue(result.getResponse().getContentAsString(),
+                ApiErrorResponse.class);
+
+        Assertions.assertNotNull(response);
+        Assertions.assertEquals(response.status(), HttpStatus.CONFLICT.value());
+        Assertions.assertEquals(response.message(), HttpStatus.CONFLICT.getReasonPhrase());
+        Assertions.assertEquals(uri, response.path());
+        List<IntegrationConnection> results = repository.findAll();
+        Assertions.assertNotNull(results);
+        Assertions.assertEquals(1, results.size());
+    }
+
+    @Test
+    void compositeUniquenessPermitsDifferentPairs() throws Exception {
+        String contentStripe = """
+                {
+                  "name": "Stripe Production",
+                  "providerType": "stripe"
+                }
+                """;
+
+        String contentPaypal = """
+                {
+                  "name": "Stripe Production",
+                  "providerType": "PAYPAL"
+                }
+                """;
+
+        String uri = "/api/v1/connections";
+        mockMvc.perform(post(uri)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(contentStripe))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post(uri)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(contentPaypal))
+                .andExpect(status().isCreated());
     }
 }

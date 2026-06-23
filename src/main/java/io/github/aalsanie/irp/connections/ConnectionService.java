@@ -1,5 +1,6 @@
 package io.github.aalsanie.irp.connections;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,15 +18,28 @@ public class ConnectionService {
 
     @Transactional
     public ConnectionResponse createConnection(CreateConnectionRequest request) {
+        String name = request.name().trim();
+        String providerType = normalizeProviderType(request.providerType());
+
+        if (repository.existsByNameAndProviderType(name, providerType)) {
+            throw new DuplicateConnectionException("Connection already exists for provider type " + providerType);
+        }
 
         IntegrationConnection connection = new IntegrationConnection(UUID.randomUUID(),
-                request.name().trim(),
-                normalizeProviderType(request.providerType()),
-                ConnectionStatus.ACTIVE, Instant.now());
+                name,
+                providerType,
+                ConnectionStatus.ACTIVE,
+                Instant.now());
 
-        IntegrationConnection savedConnection = repository.save(connection);
-
-        return ConnectionResponse.from(savedConnection);
+        try {
+            IntegrationConnection savedConnection = repository.saveAndFlush(connection);
+            return ConnectionResponse.from(savedConnection);
+        } catch (DataIntegrityViolationException exception) {
+            throw new DuplicateConnectionException(
+                    "A connection with this name and provider type already exists",
+                    exception
+            );
+        }
     }
 
     private String normalizeProviderType(String providerType) {
