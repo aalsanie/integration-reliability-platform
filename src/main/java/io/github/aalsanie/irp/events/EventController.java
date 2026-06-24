@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/connections/{connectionId}/events")
 public class EventController {
 
     private final InboundEventService inboundEventService;
@@ -18,10 +17,18 @@ public class EventController {
     }
 
     @PostMapping
+    @RequestMapping("/api/v1/connections/{connectionId}/events")
     public ResponseEntity<EventResponse> createEvent(@PathVariable("connectionId") UUID connectionId,
                                                      @Valid
                                                      @RequestBody CreateEventRequest event) {
         EventResponse eventResponse = inboundEventService.createEvent(connectionId, event);
         return ResponseEntity.status(HttpStatus.CREATED).body(eventResponse);
+    }
+
+    @GetMapping
+    @RequestMapping("/api/v1/events/{eventId}")
+    public ResponseEntity<EventResponse> getEvent(@PathVariable("event") UUID eventId) {
+        EventResponse eventResponse = inboundEventService.getEvent(eventId);
+        return ResponseEntity.status(HttpStatus.OK).body(eventResponse);
     }
 }

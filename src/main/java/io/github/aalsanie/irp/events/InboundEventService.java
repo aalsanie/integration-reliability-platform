@@ -25,7 +25,7 @@ public class InboundEventService {
         IntegrationConnection connection =
                 integrationConnectionRepository.findById(connectionId)
                         .orElseThrow(() ->
-                                new ConnectionNotFoundException(connectionId)
+                                new IntegrationConnectionNotFoundException(connectionId)
                         );
         String externalEventId = normalizeExternalEventId(createEventRequest.externalEventId());
         String eventType = normalizeEventType(createEventRequest.eventType());
@@ -37,9 +37,15 @@ public class InboundEventService {
                 eventType,
                 externalEventId,
                 connection
-                );
+        );
         InboundEvent savedInboundEvent = eventRepository.save(inboundEvent);
         return EventResponse.from(savedInboundEvent);
+    }
+
+    public EventResponse getEvent(UUID eventId) {
+        return EventResponse.from(
+                eventRepository.findById(eventId).orElseThrow(
+                        () -> new EventNotFoundException(eventId)));
     }
 
     private String normalizeExternalEventId(String externalEventId) {
