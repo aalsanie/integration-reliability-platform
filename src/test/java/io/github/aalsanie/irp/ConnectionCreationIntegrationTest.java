@@ -2,6 +2,7 @@ package io.github.aalsanie.irp;
 
 import io.github.aalsanie.irp.common.api.ApiErrorResponse;
 import io.github.aalsanie.irp.connections.*;
+import io.github.aalsanie.irp.events.EventRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,8 +35,12 @@ public class ConnectionCreationIntegrationTest {
     @Autowired
     private JsonMapper objectMapper;
 
+    @Autowired
+    private EventRepository eventRepository;
+
     @BeforeEach
     void setup() {
+        eventRepository.deleteAll();
         repository.deleteAll();
     }
 

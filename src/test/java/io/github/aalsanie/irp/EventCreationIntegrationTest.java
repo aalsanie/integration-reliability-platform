@@ -48,8 +48,8 @@ public class EventCreationIntegrationTest {
 
     @BeforeEach
     public void setup() {
-        integrationConnectionRepository.deleteAll();
         eventRepository.deleteAll();
+        integrationConnectionRepository.deleteAll();
     }
 
     @Test
@@ -95,11 +95,35 @@ public class EventCreationIntegrationTest {
         Assertions.assertNotNull(inboundEvent.getId());
         Assertions.assertNotNull(inboundEvent.getPayload());
         Assertions.assertNotNull(inboundEvent.getReceivedAt());
+        Assertions.assertEquals(
+                "pay_100",
+                inboundEvent.getPayload().get("paymentId").asString()
+        );
+
+        Assertions.assertEquals(
+                2500,
+                inboundEvent.getPayload().get("amount").asInt()
+        );
+
+        Assertions.assertEquals(
+                "USD",
+                inboundEvent.getPayload().get("currency").asString()
+        );
+        Assertions.assertEquals(
+                savedConnection.getId(),
+                eventResponse.connectionId()
+        );
+
+        Assertions.assertEquals(
+                savedConnection.getId(),
+                inboundEvent.getConnection().getId()
+        );
     }
 
     @Test
     public void invalidEventUnknownConnectionTest() throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/connections/" + UUID.randomUUID() + "/events")
+        UUID missingConnectionId = UUID.randomUUID();
+        MvcResult result = mockMvc.perform(post("/api/v1/connections/" + missingConnectionId + "/events")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                  {\s
@@ -125,6 +149,14 @@ public class EventCreationIntegrationTest {
         Assertions.assertEquals(errorResponse.error(), HttpStatus.NOT_FOUND.getReasonPhrase());
         List<InboundEvent> events = eventRepository.findAll();
         Assertions.assertEquals(0, events.size());
+        Assertions.assertEquals(
+                "/api/v1/connections/" + missingConnectionId + "/events",
+                errorResponse.path()
+        );
+
+        Assertions.assertTrue(
+                errorResponse.message().contains(missingConnectionId.toString())
+        );
     }
 
     @Test
@@ -167,12 +199,21 @@ public class EventCreationIntegrationTest {
 
     @Test
     public void invalidEventRetrivalTest() throws Exception {
-        MvcResult eventResult = mockMvc.perform(get("/api/v1/events/" + UUID.randomUUID()))
+        UUID missingEventId = UUID.randomUUID();
+        MvcResult eventResult = mockMvc.perform(get("/api/v1/events/" + missingEventId))
                 .andExpect(status().isNotFound())
                 .andReturn();
-        ApiErrorResponse eventResponse = jsonMapper.readValue(eventResult.getResponse().getContentAsString(), ApiErrorResponse.class);
-        Assertions.assertNotNull(eventResponse);
-        Assertions.assertEquals(eventResponse.status(), HttpStatus.NOT_FOUND.value());
-        Assertions.assertEquals(eventResponse.error(), HttpStatus.NOT_FOUND.getReasonPhrase());
+        ApiErrorResponse errorResponse = jsonMapper.readValue(eventResult.getResponse().getContentAsString(), ApiErrorResponse.class);
+        Assertions.assertNotNull(errorResponse);
+        Assertions.assertEquals(errorResponse.status(), HttpStatus.NOT_FOUND.value());
+        Assertions.assertEquals(errorResponse.error(), HttpStatus.NOT_FOUND.getReasonPhrase());
+        Assertions.assertEquals(
+                "/api/v1/events/"+missingEventId,
+                errorResponse.path()
+        );
+
+        Assertions.assertTrue(
+                errorResponse.message().contains(missingEventId.toString())
+        );
     }
 }
