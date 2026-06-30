@@ -2,6 +2,7 @@ package io.github.aalsanie.irp.events;
 
 import io.github.aalsanie.irp.connections.IntegrationConnection;
 import io.github.aalsanie.irp.connections.IntegrationConnectionRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +31,12 @@ public class InboundEventService {
         String externalEventId = normalizeExternalEventId(createEventRequest.externalEventId());
         String eventType = normalizeEventType(createEventRequest.eventType());
 
+        boolean isDuplicate = eventRepository.existsByConnection_IdAndExternalEventId(connectionId, externalEventId);
+
+        if (isDuplicate) {
+            throw new DuplicateInboundEventException(connectionId, externalEventId);
+        }
+
         InboundEvent inboundEvent = new InboundEvent(UUID.randomUUID(),
                 Instant.now(),
                 ProcessingStatus.RECEIVED,
@@ -38,8 +45,12 @@ public class InboundEventService {
                 externalEventId,
                 connection
         );
-        InboundEvent savedInboundEvent = eventRepository.save(inboundEvent);
-        return EventResponse.from(savedInboundEvent);
+        try {
+            InboundEvent savedInboundEvent = eventRepository.saveAndFlush(inboundEvent);
+            return EventResponse.from(savedInboundEvent);
+        } catch (DataIntegrityViolationException exception) {
+            throw new DuplicateInboundEventException(connectionId, externalEventId, exception);
+        }
     }
 
     public EventResponse getEvent(UUID eventId) {

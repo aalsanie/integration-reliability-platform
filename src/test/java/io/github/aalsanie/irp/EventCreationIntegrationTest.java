@@ -208,12 +208,109 @@ public class EventCreationIntegrationTest {
         Assertions.assertEquals(errorResponse.status(), HttpStatus.NOT_FOUND.value());
         Assertions.assertEquals(errorResponse.error(), HttpStatus.NOT_FOUND.getReasonPhrase());
         Assertions.assertEquals(
-                "/api/v1/events/"+missingEventId,
+                "/api/v1/events/" + missingEventId,
                 errorResponse.path()
         );
 
         Assertions.assertTrue(
                 errorResponse.message().contains(missingEventId.toString())
         );
+    }
+
+    @Test
+    public void duplicateConnectionIdExternalEventIdTest() throws Exception {
+        IntegrationConnection connection = new IntegrationConnection(UUID.randomUUID(),
+                "test",
+                "test",
+                ConnectionStatus.ACTIVE,
+                Instant.now());
+
+        IntegrationConnection savedConnection = integrationConnectionRepository.save(connection);
+
+        mockMvc.perform(post("/api/v1/connections/" + savedConnection.getId() + "/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                 {\s
+                                   "externalEventId": "evt_12345",\s
+                                   "eventType": "payment.succeeded",\s
+                                   "payload":\s
+                                   {\s
+                                     "paymentId": "pay_100",\s
+                                     "amount": 2500,\s
+                                     "currency": "USD"\s
+                                   }\s
+                                 }
+                                \s"""))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/v1/connections/" + savedConnection.getId() + "/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                 {\s
+                                   "externalEventId": "evt_12345",\s
+                                   "eventType": "payment.succeeded",\s
+                                   "payload":\s
+                                   {\s
+                                     "paymentId": "pay_100",\s
+                                     "amount": 2500,\s
+                                     "currency": "USD"\s
+                                   }\s
+                                 }
+                                \s"""))
+                .andExpect(status().isConflict());
+        List<InboundEvent> events = eventRepository.findAll();
+        Assertions.assertNotNull(events);
+        Assertions.assertEquals(1, events.size());
+    }
+
+    @Test
+    public void differentConnectionIdWithSameExternalEventIdTest() throws Exception {
+        IntegrationConnection connectionA = new IntegrationConnection(UUID.randomUUID(),
+                "test",
+                "test",
+                ConnectionStatus.ACTIVE,
+                Instant.now());
+
+        IntegrationConnection connectionB = new IntegrationConnection(UUID.randomUUID(),
+                "capsule",
+                "capsule",
+                ConnectionStatus.ACTIVE,
+                Instant.now());
+
+        IntegrationConnection savedConnection = integrationConnectionRepository.save(connectionA);
+        IntegrationConnection savedConnectionB = integrationConnectionRepository.save(connectionB);
+
+        mockMvc.perform(post("/api/v1/connections/" + savedConnection.getId() + "/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                 {\s
+                                   "externalEventId": "evt_12345",\s
+                                   "eventType": "payment.succeeded",\s
+                                   "payload":\s
+                                   {\s
+                                     "paymentId": "pay_100",\s
+                                     "amount": 2500,\s
+                                     "currency": "USD"\s
+                                   }\s
+                                 }
+                                \s"""))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/v1/connections/" + savedConnectionB.getId() + "/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                 {\s
+                                   "externalEventId": "evt_12345",\s
+                                   "eventType": "payment.succeeded",\s
+                                   "payload":\s
+                                   {\s
+                                     "paymentId": "pay_100",\s
+                                     "amount": 2500,\s
+                                     "currency": "USD"\s
+                                   }\s
+                                 }
+                                \s"""))
+                .andExpect(status().isCreated());
+        List<InboundEvent> events = eventRepository.findAll();
+        Assertions.assertNotNull(events);
+        Assertions.assertEquals(2, events.size());
     }
 }

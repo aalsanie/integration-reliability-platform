@@ -1,6 +1,7 @@
 package io.github.aalsanie.irp.common.api;
 
 import io.github.aalsanie.irp.connections.DuplicateConnectionException;
+import io.github.aalsanie.irp.events.DuplicateInboundEventException;
 import io.github.aalsanie.irp.events.EventNotFoundException;
 import io.github.aalsanie.irp.events.IntegrationConnectionNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,5 +49,16 @@ public class GlobalExceptionHandler {
                 status.getReasonPhrase(),
                 request.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(value = {DuplicateInboundEventException.class})
+    public ResponseEntity<ApiErrorResponse> handleException(DuplicateInboundEventException exception, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.CONFLICT;
+        ApiErrorResponse response = new ApiErrorResponse(Instant.now(),
+                status.value(),
+                exception.getMessage(),
+                status.getReasonPhrase(),
+                request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 }
