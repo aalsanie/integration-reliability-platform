@@ -1,5 +1,6 @@
 package io.github.aalsanie.irp.events;
 
+import io.github.aalsanie.irp.common.api.PageResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,13 @@ public class EventController {
                                                      @RequestBody CreateEventRequest event) {
         EventResponse eventResponse = inboundEventService.createEvent(connectionId, event);
         return ResponseEntity.status(HttpStatus.CREATED).body(eventResponse);
+    }
+
+    @GetMapping("/api/v1/connections/{connectionId}/events")
+    public ResponseEntity<PageResponse<EventResponse>> createEvent(@PathVariable("connectionId") UUID connectionId,
+                                                     @Valid @ModelAttribute GetEventsRequest request) {
+        PageResponse<EventResponse> eventResponse = inboundEventService.getEvents(connectionId, request.page(), request.size());
+        return ResponseEntity.status(HttpStatus.OK).body(eventResponse);
     }
 
     @GetMapping("/api/v1/events/{eventId}")

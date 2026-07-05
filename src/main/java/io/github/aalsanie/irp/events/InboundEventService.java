@@ -1,8 +1,13 @@
 package io.github.aalsanie.irp.events;
 
+import io.github.aalsanie.irp.common.api.PageResponse;
 import io.github.aalsanie.irp.connections.IntegrationConnection;
 import io.github.aalsanie.irp.connections.IntegrationConnectionRepository;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,6 +62,26 @@ public class InboundEventService {
         return EventResponse.from(
                 eventRepository.findById(eventId).orElseThrow(
                         () -> new EventNotFoundException(eventId)));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<EventResponse> getEvents(UUID connectionId, int page, int size) {
+
+        integrationConnectionRepository.findById(connectionId)
+                .orElseThrow(() ->
+                        new IntegrationConnectionNotFoundException(connectionId)
+                );
+        Pageable pageable = PageRequest.of(page, size,Sort.by(
+                Sort.Order.desc("receivedAt"),
+                Sort.Order.desc("id")
+        ));
+        Page<InboundEvent> eventPage =
+                eventRepository.findByConnection_Id(connectionId, pageable);
+
+        Page<EventResponse> responsePage =
+                eventPage.map(EventResponse::from);
+
+        return PageResponse.from(responsePage);
     }
 
     private String normalizeExternalEventId(String externalEventId) {
