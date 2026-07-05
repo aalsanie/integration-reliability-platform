@@ -1,5 +1,7 @@
 package io.github.aalsanie.irp.common.api;
 
+import org.springframework.data.domain.Page;
+
 import java.util.List;
 
 public record PageResponse<T>(List<T> items,
@@ -9,4 +11,15 @@ public record PageResponse<T>(List<T> items,
                               int totalPages,
                               boolean first,
                               boolean last) {
+    public static <T> PageResponse<T> from(Page<T> page) {
+        return new PageResponse<>(
+                page.getContent(),
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.isFirst(),
+                page.isLast()
+        );
+    }
 }
