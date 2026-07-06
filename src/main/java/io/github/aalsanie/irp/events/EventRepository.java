@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface EventRepository extends JpaRepository<InboundEvent, UUID> {
     boolean existsByConnection_IdAndExternalEventId( UUID connectionId, String externalEventId );
     Page<InboundEvent> findByConnection_Id( UUID connectionId, Pageable pageable);
+    InboundEvent updateInboundEvent(UUID id, ProcessingStatus processingStatus);
 }

@@ -4,6 +4,7 @@ import io.github.aalsanie.irp.connections.DuplicateConnectionException;
 import io.github.aalsanie.irp.events.DuplicateInboundEventException;
 import io.github.aalsanie.irp.events.EventNotFoundException;
 import io.github.aalsanie.irp.events.IntegrationConnectionNotFoundException;
+import io.github.aalsanie.irp.events.InvalidEventProcessingStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,5 +61,16 @@ public class GlobalExceptionHandler {
                 status.getReasonPhrase(),
                 request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(value = {InvalidEventProcessingStatus.class})
+    public ResponseEntity<ApiErrorResponse> handleException(InvalidEventProcessingStatus exception, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        ApiErrorResponse response = new ApiErrorResponse(Instant.now(),
+                status.value(),
+                exception.getMessage(),
+                status.getReasonPhrase(),
+                request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 }

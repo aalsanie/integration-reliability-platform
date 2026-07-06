@@ -58,6 +58,26 @@ public class InboundEventService {
         }
     }
 
+    public EventResponse updateEventStatus(UUID eventId, String processingStatus) {
+        ProcessingStatus normalizedProcessingStatus = normalizeProcessingStatus(processingStatus);
+        if(!eventRepository.existsById(eventId)){
+            throw new EventNotFoundException(eventId);
+        }
+        InboundEvent event = eventRepository.updateInboundEvent(eventId, normalizedProcessingStatus);
+        return EventResponse.from(event);
+    }
+
+    private ProcessingStatus normalizeProcessingStatus(String processingStatus) {
+        processingStatus = processingStatus.trim().toUpperCase();
+        return switch (processingStatus) {
+            case "RECEIVED" -> ProcessingStatus.RECEIVED;
+            case "COMPLETED" -> ProcessingStatus.COMPLETED;
+            case "FAILED" -> ProcessingStatus.FAILED;
+            case "PROCESSING" -> ProcessingStatus.PROCESSING;
+            default -> throw new InvalidEventProcessingStatus(processingStatus);
+        };
+    }
+
     public EventResponse getEvent(UUID eventId) {
         return EventResponse.from(
                 eventRepository.findById(eventId).orElseThrow(
