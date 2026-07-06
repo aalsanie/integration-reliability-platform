@@ -84,4 +84,12 @@ public class InboundEvent {
     public UUID getId() {
         return id;
     }
+
+    public void updateStatus(ProcessingStatus status) {
+        if (status == null) {
+            throw new IllegalArgumentException("status cannot be null");
+        }
+
+        this.status = status;
+    }
 }

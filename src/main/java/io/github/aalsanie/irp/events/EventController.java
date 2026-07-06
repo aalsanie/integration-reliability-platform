@@ -25,11 +25,15 @@ public class EventController {
         return ResponseEntity.status(HttpStatus.CREATED).body(eventResponse);
     }
 
-    @PostMapping("/api/v1/events/{eventId}/status")
-    public ResponseEntity<EventResponse> createEvent(@PathVariable("eventId") UUID eventId,
-                                                     @RequestBody String status) {
-        EventResponse eventResponse = inboundEventService.updateEventStatus(eventId, status);
-        return ResponseEntity.status(HttpStatus.CREATED).body(eventResponse);
+    @PatchMapping("/api/v1/events/{eventId}/status")
+    public ResponseEntity<EventResponse> updateEventStatus(
+            @PathVariable("eventId") UUID eventId,
+            @Valid @RequestBody UpdateEventStatusRequest request
+    ) {
+        EventResponse eventResponse =
+                inboundEventService.updateEventStatus(eventId, request.status());
+
+        return ResponseEntity.ok(eventResponse);
     }
 
     @GetMapping("/api/v1/connections/{connectionId}/events")

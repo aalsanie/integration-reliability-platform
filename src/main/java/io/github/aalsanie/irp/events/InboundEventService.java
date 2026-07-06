@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -58,24 +59,31 @@ public class InboundEventService {
         }
     }
 
+    @Transactional
     public EventResponse updateEventStatus(UUID eventId, String processingStatus) {
-        ProcessingStatus normalizedProcessingStatus = normalizeProcessingStatus(processingStatus);
-        if(!eventRepository.existsById(eventId)){
-            throw new EventNotFoundException(eventId);
-        }
-        InboundEvent event = eventRepository.updateInboundEvent(eventId, normalizedProcessingStatus);
+        ProcessingStatus normalizedStatus =
+                normalizeProcessingStatus(processingStatus);
+
+        InboundEvent event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException(eventId));
+
+        event.updateStatus(normalizedStatus);
+
         return EventResponse.from(event);
     }
 
     private ProcessingStatus normalizeProcessingStatus(String processingStatus) {
-        processingStatus = processingStatus.trim().toUpperCase();
-        return switch (processingStatus) {
-            case "RECEIVED" -> ProcessingStatus.RECEIVED;
-            case "COMPLETED" -> ProcessingStatus.COMPLETED;
-            case "FAILED" -> ProcessingStatus.FAILED;
-            case "PROCESSING" -> ProcessingStatus.PROCESSING;
-            default -> throw new InvalidEventProcessingStatus(processingStatus);
-        };
+        if (processingStatus == null || processingStatus.isBlank()) {
+            throw new InvalidEventProcessingStatus(String.valueOf(processingStatus));
+        }
+
+        String normalized = processingStatus.trim().toUpperCase(Locale.ROOT);
+
+        try {
+            return ProcessingStatus.valueOf(normalized);
+        } catch (IllegalArgumentException exception) {
+            throw new InvalidEventProcessingStatus(processingStatus);
+        }
     }
 
     public EventResponse getEvent(UUID eventId) {
@@ -91,7 +99,7 @@ public class InboundEventService {
                 .orElseThrow(() ->
                         new IntegrationConnectionNotFoundException(connectionId)
                 );
-        Pageable pageable = PageRequest.of(page, size,Sort.by(
+        Pageable pageable = PageRequest.of(page, size, Sort.by(
                 Sort.Order.desc("receivedAt"),
                 Sort.Order.desc("id")
         ));
